@@ -129,7 +129,7 @@ pub mod de_anno_token_program {
 
         mint_to(cpi_ctx, mint_amount)?;
 
-        ctx.accounts.worker_data.withdraw_limit = ctx.accounts.worker_data.withdraw_limit.saturating_add(amount * ctx.accounts.init_data.withdraw_percent);
+        ctx.accounts.worker_data.withdraw_limit = ctx.accounts.worker_data.withdraw_limit.saturating_add(amount * ctx.accounts.init_data.withdraw_percent / 100);
 
         Ok(())
     }
@@ -142,7 +142,7 @@ pub mod de_anno_token_program {
             return err!(MyError::OutOfWithdrawLimit);
         }
 
-        /// Transfer DAN
+        // Transfer DAN
         // PDA seeds and bump to "sign" for CPI
         let seeds = b"deanno";
         let bump = ctx.bumps.deanno_token_mint;
@@ -166,7 +166,7 @@ pub mod de_anno_token_program {
 
         transfer(cpi_ctx, transfer_token_amount)?;
 
-        /// Transfer USDC
+        // Transfer USDC
         // PDA seeds and bump to "sign" for CPI
         let seeds = b"usdc";//TODO
         let bump = ctx.bumps.usdc_mint;
@@ -223,10 +223,10 @@ pub struct Initialize<'info> {
 
     #[account(
         init,
-        payer = admin,
-        space = 8 + 8 + 1,
         seeds = [b"init"],
         bump,
+        payer = admin,
+        space = 8 + 8 + 8,
     )]
     pub init_data: Account<'info, InitData>,
 
