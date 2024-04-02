@@ -79,16 +79,17 @@ pub mod de_anno_token_program {
     }
 
     // Create new worker account
-    pub fn init_worker(ctx: Context<InitWorker>) -> Result<()> {
+    pub fn init_worker(ctx: Context<InitWorker>, withdraw_limit:u64) -> Result<()> {
         // Set initial worker withdraw limit
-        ctx.accounts.worker_data.withdraw_limit = 0;
+        ctx.accounts.worker_data.withdraw_limit = withdraw_limit;
         Ok(())
     }
 
     // Create new demander account
-    pub fn init_demander(ctx: Context<InitDemander>) -> Result<()> {
+    pub fn init_demander(ctx: Context<InitDemander>, balance:u64) -> Result<()> {
         // Set initial demander balance
-        ctx.accounts.demander_data.balance = 0;
+        // for测试，先给100
+        ctx.accounts.demander_data.balance = balance;
         Ok(())
     }
 
@@ -137,6 +138,7 @@ pub mod de_anno_token_program {
     // worker withdraw USDC by DAN
     pub fn worker_withdraw(ctx: Context<WorkerWithdraw>, amount: u64) -> Result<()> {
         // worker提现:在withdraw limit内，转DAN给合约，合约转USDC给worker
+        // amount是DAN数量，withdraw_amount是usdc数量
         let withdraw_amount = amount / ctx.accounts.init_data.token_price;
         if ctx.accounts.worker_data.withdraw_limit < withdraw_amount {
             return err!(MyError::OutOfWithdrawLimit);
@@ -238,6 +240,7 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct InitWorker<'info> {
+
     #[account(mut)]
     pub worker: Signer<'info>,
 
@@ -274,10 +277,20 @@ pub struct InitDemander<'info> {
 
 #[derive(Accounts)]
 pub struct TokenDistribution<'info> {
+    // Use ADMIN_PUBKEY as constraint, only the specified admin can invoke this instruction
+    #[account(
+        mut,
+        address = ADMIN_PUBKEY
+    )]
+    pub admin: Signer<'info>,
+
+    /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
-    pub payer: Signer<'info>,
-    pub worker: Signer<'info>,//TODO:这里感觉不应该增加worker这个signer
-    pub demander: Signer<'info>,
+    pub worker: UncheckedAccount<'info>,
+    
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    #[account(mut)]
+    pub demander: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -302,7 +315,7 @@ pub struct TokenDistribution<'info> {
 
     #[account(
         init_if_needed,
-        payer = payer,
+        payer = admin,
         associated_token::mint = deanno_token_mint,
         associated_token::authority = worker
     )]
@@ -410,7 +423,7 @@ pub struct DemanderData {
 
 #[error_code]
 pub enum MyError {
-    #[msg("Not enough health")]
+    #[msg("Not enough balance")]
     NotEnoughBalance,
     #[msg("Out of withdraw limit")]
     OutOfWithdrawLimit,

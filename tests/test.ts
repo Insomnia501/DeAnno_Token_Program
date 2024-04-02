@@ -2,10 +2,11 @@ import * as anchor from "@coral-xyz/anchor"
 import { Program } from "@coral-xyz/anchor"
 import { DeAnnoTokenProgram } from "../target/types/de_anno_token_program"
 import * as spl from "@solana/spl-token"
-import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js"
+import { Connection, PublicKey, clusterApiUrl, LAMPORTS_PER_SOL, Keypair} from "@solana/web3.js"
 import { assert } from "chai"
 import { amount, Metaplex } from "@metaplex-foundation/js"
 import { PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID } from "@metaplex-foundation/mpl-token-metadata"
+import * as fs from 'fs';
 
 describe("de-anno-token-program", () => {
   // Configure the client to use the local cluster.
@@ -17,8 +18,18 @@ describe("de-anno-token-program", () => {
   const metaplex = Metaplex.make(connection)
   const token_metadata_program_id = new anchor.web3.PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
 
-  const worker = new anchor.web3.PublicKey('HpEdSJaqUNQkHY26snzjEE6JBiyAy5nP1m3yvCirxhB5')
-  const demander = new anchor.web3.PublicKey('5ypQbn1GkctugJa8kMPkR3ebzVy396C7wto5waNXPiWq')
+  const privateKeyJson = "/Users/daniel/Code/07_Solana/.Solana_wallet/test_wallet_1.json"
+  const privateKeyString = fs.readFileSync(privateKeyJson, { encoding: 'utf8' });
+  // 将JSON字符串转换为Uint8Array
+  const privateKeyUint8Array = new Uint8Array(JSON.parse(privateKeyString));
+  // 从私钥创建Keypair
+  const admin = Keypair.fromSecretKey(privateKeyUint8Array);
+
+  const worker = anchor.web3.Keypair.generate()
+  const demander = anchor.web3.Keypair.generate()
+  connection.requestAirdrop(worker.publicKey, 2*LAMPORTS_PER_SOL)
+  connection.requestAirdrop(demander.publicKey, 2*LAMPORTS_PER_SOL)
+
 
   // PDA for the token mint——给合约创建了一个tokenMintsPDA，solana上合约程序和存储分离，可以理解为这是token program的存储账户
   const [deannoTokenMintPDA] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -26,9 +37,7 @@ describe("de-anno-token-program", () => {
     program.programId
   )
 
-  // PDA (usdc token mint)
-  const usdcTokenMint = new anchor.web3.PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU")
-
+  
   // PDA for the deanno data account——给合约创建一个PDA，用来存初始化的数据
   const [deannoDataPDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("init")],
@@ -37,20 +46,20 @@ describe("de-anno-token-program", () => {
 
   // PDA for the data account——给worker创建一个PDA，用来存用户自己的数据
   const [workerPDA] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("worker"), worker.toBuffer()],
+    [Buffer.from("worker"), worker.publicKey.toBuffer()],
     program.programId
   )
 
   // PDA for the data account——给demander创建一个PDA，用来存用户自己的数据
   const [demanderPDA] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("demander"), demander.toBuffer()],
+    [Buffer.from("demander"), demander.publicKey.toBuffer()],
     program.programId
   )
 
   // worker associated token account address——给worker创建一个ATA，用来存deannoToken
   const workerTokenAccount = spl.getAssociatedTokenAddressSync(
     deannoTokenMintPDA,
-    worker
+    worker.publicKey
   )
 
   // program associated token account address——给合约本身创建一个ATA，用来存deannoToken
@@ -61,20 +70,7 @@ describe("de-anno-token-program", () => {
     true
   )
 
-  // worker usdc associated token account address——worker的usdc ATA
-  const workerUSDCAccount = spl.getAssociatedTokenAddressSync(
-    usdcTokenMint,
-    worker
-  )
-
-  // program usdc associated token account address——合约的usdc ATA
-  const deannoUSDCAccount = spl.getAssociatedTokenAddressSync(
-    usdcTokenMint,
-    deannoDataPDA,
-    true
-  )
-
-  // todo: 给deannoUSDCAccount转一些usdc
+  
 
   // token metadata
   const metadata = {
@@ -82,6 +78,7 @@ describe("de-anno-token-program", () => {
     name: "DeAnno",
     symbol: "DAN",
   }
+
 
   it("Initialize", async () => {
     // PDA for the token metadata account for the deanno token mint创建一个tokenMints的metadata的PDA，不明白为啥这还要单独一个account
@@ -105,48 +102,65 @@ describe("de-anno-token-program", () => {
     console.log("Your transaction signature", tx)
 
     const initData = await program.account.initData.fetch(deannoDataPDA)
-    const withdrawPercentGT = new anchor.BN(50)
-    assert(initData.withdrawPercent === withdrawPercentGT)
+    assert.strictEqual(
+      Number(
+        initData.withdrawPercent
+      ),
+      50
+    )
   })
 
   it("Init Worker", async () => {
+    const withdraw_limit_init = new anchor.BN(100)
     const tx = await program.methods
-      .initWorker()
+      .initWorker(withdraw_limit_init)
       .accounts({
-        worker: worker,
+        worker: worker.publicKey,
         workerData: workerPDA,
       })
+      .signers([worker])
       .rpc()
     console.log("Your transaction signature", tx)
 
     const workerData = await program.account.workerData.fetch(workerPDA)
-    const withdrawLimitGT = new anchor.BN(0)
-    assert(workerData.withdrawLimit === withdrawLimitGT)
+    assert.strictEqual(
+      Number(
+        workerData.withdrawLimit
+      ),
+      100
+    )
   })
 
   it("Init Demander", async () => {
+    const balance_init = new anchor.BN(100)
     const tx = await program.methods
-      .initDemander()
+      .initDemander(balance_init)
       .accounts({
-        demander: demander,
+        demander: demander.publicKey,
         demanderData: demanderPDA,
       })
+      .signers([demander])
       .rpc()
     console.log("Your transaction signature", tx)
 
     const demanderData = await program.account.demanderData.fetch(demanderPDA)
-    const balanceGT = new anchor.BN(0)
-    assert(demanderData.balance === balanceGT)
+    assert.strictEqual(
+      Number(
+        demanderData.balance
+      ),
+      100
+    )
   })
 
   it("Token Distribution", async () => {
+    
+
     const amount = new anchor.BN(50)
     const tx = await program.methods
       .tokenDistribution(amount)
       .accounts({
-        payer: wallet,
-        worker: worker,
-        demander: demander,
+        worker: worker.publicKey,
+        demander: demander.publicKey,
         demanderData: demanderPDA,
         workerData: workerPDA,
         initData: deannoDataPDA,
@@ -162,16 +176,63 @@ describe("de-anno-token-program", () => {
         (await connection.getTokenAccountBalance(workerTokenAccount)).value
           .amount
       ),
-      50
+      50_000_000_000
     )
   })
 
   it("worker withdraw", async () => {
+    // 造一个测试用的币，当作usdc
+    console.log("start")
+    const usdcTokenMint = await spl.createMint(
+      connection,
+      admin,
+      admin.publicKey,
+      null,
+      6, // 小数位数，USDC 通常有6位小数
+    );
+    console.log(typeof usdcTokenMint)
+
+    // worker usdc associated token account address——worker的usdc ATA
+    const workerUSDCAccount = spl.getAssociatedTokenAddressSync(
+      usdcTokenMint,
+      worker.publicKey
+    )
+    console.log(typeof workerUSDCAccount)
+
+    // program usdc associated token account address——合约的usdc ATA
+    const deannoUSDCAccount = spl.getAssociatedTokenAddressSync(
+      usdcTokenMint,
+      deannoDataPDA,
+      true
+    )
+    console.log(typeof workerUSDCAccount)
+
+    // 初始化一些usdc给deannoUSDCAccount
+    const tx_sign = await spl.mintTo(
+      connection,
+      admin,
+      usdcTokenMint,
+      deannoUSDCAccount,
+      admin.publicKey,
+      100 * 10 ** 6, // 铸造的数量，这里是100个代币，记得乘以10的6次方因为小数位数是6
+    );
+    console.log(
+      `Mint Token Transaction: https://explorer.solana.com/tx/${tx_sign}?cluster=devnet`
+    )
+
+    assert.strictEqual(
+      Number(
+        (await connection.getTokenAccountBalance(deannoUSDCAccount)).value
+          .amount
+      ),
+      100_000_000_000
+    )
+
     const amount = new anchor.BN(50)
     const tx = await program.methods
       .workerWithdraw(amount)
       .accounts({
-        worker: worker,
+        worker: worker.publicKey,
         workerData: workerPDA,
         initData: deannoDataPDA,
         workerTokenAccount: workerTokenAccount,
@@ -181,6 +242,7 @@ describe("de-anno-token-program", () => {
         deannoTokenMint: deannoTokenMintPDA,
         usdcMint: usdcTokenMint
       })
+      .signers([worker])
       .rpc()
     console.log("Your transaction signature", tx)
 
@@ -190,7 +252,7 @@ describe("de-anno-token-program", () => {
         (await connection.getTokenAccountBalance(workerUSDCAccount)).value
           .amount
       ),
-      50
+      50_000_000_000
     )
     assert.strictEqual(
       Number(
