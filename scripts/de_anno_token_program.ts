@@ -1,0 +1,899 @@
+export type DeAnnoTokenProgram = {
+  "version": "0.1.0",
+  "name": "de_anno_token_program",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "deannoTokenMint",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "deanno"
+              }
+            ]
+          }
+        },
+        {
+          "name": "metadataAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "initData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "init"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadataProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "uri",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string"
+        },
+        {
+          "name": "tokenPriceInit",
+          "type": "u64"
+        },
+        {
+          "name": "withdrawPercentInit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initWorker",
+      "accounts": [
+        {
+          "name": "worker",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "workerData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "worker"
+              },
+              {
+                "kind": "account",
+                "type": "publicKey",
+                "path": "worker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "withdrawLimit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initDemander",
+      "accounts": [
+        {
+          "name": "demander",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "demanderData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "demander"
+              },
+              {
+                "kind": "account",
+                "type": "publicKey",
+                "path": "demander"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "balance",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "tokenDistribution",
+      "accounts": [
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "worker",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "demander",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "demanderData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "demander"
+              },
+              {
+                "kind": "account",
+                "type": "publicKey",
+                "path": "demander"
+              }
+            ]
+          }
+        },
+        {
+          "name": "workerData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "worker"
+              },
+              {
+                "kind": "account",
+                "type": "publicKey",
+                "path": "worker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "initData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "init"
+              }
+            ]
+          }
+        },
+        {
+          "name": "workerTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deannoTokenMint",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "deanno"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "workerWithdraw",
+      "accounts": [
+        {
+          "name": "worker",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "workerData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "worker"
+              },
+              {
+                "kind": "account",
+                "type": "publicKey",
+                "path": "worker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "initData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "init"
+              }
+            ]
+          }
+        },
+        {
+          "name": "workerTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "workerUsdcAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deannoTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deannoUsdcAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deannoTokenMint",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "deanno"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdcMint",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "usdc"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "initData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tokenPrice",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawPercent",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "workerData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "withdrawLimit",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "demanderData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "balance",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NotEnoughBalance",
+      "msg": "Not enough balance"
+    },
+    {
+      "code": 6001,
+      "name": "OutOfWithdrawLimit",
+      "msg": "Out of withdraw limit"
+    }
+  ]
+};
+
+export const IDL: DeAnnoTokenProgram = {
+  "version": "0.1.0",
+  "name": "de_anno_token_program",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "deannoTokenMint",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "deanno"
+              }
+            ]
+          }
+        },
+        {
+          "name": "metadataAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "initData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "init"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadataProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "uri",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string"
+        },
+        {
+          "name": "tokenPriceInit",
+          "type": "u64"
+        },
+        {
+          "name": "withdrawPercentInit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initWorker",
+      "accounts": [
+        {
+          "name": "worker",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "workerData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "worker"
+              },
+              {
+                "kind": "account",
+                "type": "publicKey",
+                "path": "worker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "withdrawLimit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initDemander",
+      "accounts": [
+        {
+          "name": "demander",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "demanderData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "demander"
+              },
+              {
+                "kind": "account",
+                "type": "publicKey",
+                "path": "demander"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "balance",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "tokenDistribution",
+      "accounts": [
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "worker",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "demander",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "demanderData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "demander"
+              },
+              {
+                "kind": "account",
+                "type": "publicKey",
+                "path": "demander"
+              }
+            ]
+          }
+        },
+        {
+          "name": "workerData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "worker"
+              },
+              {
+                "kind": "account",
+                "type": "publicKey",
+                "path": "worker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "initData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "init"
+              }
+            ]
+          }
+        },
+        {
+          "name": "workerTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deannoTokenMint",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "deanno"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "workerWithdraw",
+      "accounts": [
+        {
+          "name": "worker",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "workerData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "worker"
+              },
+              {
+                "kind": "account",
+                "type": "publicKey",
+                "path": "worker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "initData",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "init"
+              }
+            ]
+          }
+        },
+        {
+          "name": "workerTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "workerUsdcAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deannoTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deannoUsdcAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "deannoTokenMint",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "deanno"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdcMint",
+          "isMut": true,
+          "isSigner": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "type": "string",
+                "value": "usdc"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "initData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tokenPrice",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawPercent",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "workerData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "withdrawLimit",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "demanderData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "balance",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NotEnoughBalance",
+      "msg": "Not enough balance"
+    },
+    {
+      "code": 6001,
+      "name": "OutOfWithdrawLimit",
+      "msg": "Out of withdraw limit"
+    }
+  ]
+};
