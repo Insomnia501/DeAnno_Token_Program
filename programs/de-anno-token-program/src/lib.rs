@@ -139,8 +139,9 @@ pub mod de_anno_token_program {
     pub fn worker_withdraw(ctx: Context<WorkerWithdraw>, amount: u64) -> Result<()> {
         // worker提现:在withdraw limit内，转DAN给合约，合约转USDC给worker
         // amount是DAN数量，withdraw_amount是usdc数量
+        
         let withdraw_amount = amount / ctx.accounts.init_data.token_price;
-        if ctx.accounts.worker_data.withdraw_limit < withdraw_amount {
+        if ctx.accounts.worker_data.withdraw_limit < withdraw_amount { 
             return err!(MyError::OutOfWithdrawLimit);
         }
 
@@ -168,29 +169,24 @@ pub mod de_anno_token_program {
 
         transfer(cpi_ctx, transfer_token_amount)?;
 
-        // Transfer USDC
-        // PDA seeds and bump to "sign" for CPI
-        let seeds = b"usdc";//TODO
-        let bump = ctx.bumps.usdc_mint;
-        let signer: &[&[&[u8]]] = &[&[seeds, &[bump]]];
-
         // CPI Context
-        let cpi_ctx = CpiContext::new_with_signer(
+        let cpi_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
-                from: ctx.accounts.deanno_token_account.to_account_info(), // mint account of token to mint
-                to: ctx.accounts.worker_token_account.to_account_info(), // player token account to mint to
-                authority: ctx.accounts.usdc_mint.to_account_info(), // pda is used as both address of mint and mint authority
-            },
-            signer, // pda signer
+                from: ctx.accounts.deanno_usdc_account.to_account_info(), // mint account of token to mint
+                to: ctx.accounts.worker_usdc_account.to_account_info(), // player token account to mint to
+                authority: ctx.accounts.admin.to_account_info(), // pda is used as both address of mint and mint authority
+            }
         );
 
         // Mint token, accounting for decimals of mint
         let transfer_usdc_amount = withdraw_amount
-            .checked_mul(10u64.pow(ctx.accounts.deanno_token_mint.decimals as u32))
+            .checked_mul(10u64.pow(ctx.accounts.usdc_mint.decimals as u32))
             .unwrap();
 
         transfer(cpi_ctx, transfer_usdc_amount)?;
+
+        ctx.accounts.worker_data.withdraw_limit = ctx.accounts.worker_data.withdraw_limit.saturating_sub(withdraw_amount);
 
         Ok(())
     }
@@ -335,8 +331,16 @@ pub struct TokenDistribution<'info> {
 
 #[derive(Accounts)]
 pub struct WorkerWithdraw<'info> {
+    // Use ADMIN_PUBKEY as constraint, only the specified admin can invoke this instruction
+    #[account(
+        mut,
+        address = ADMIN_PUBKEY
+    )]
+    pub admin: Signer<'info>,
+
+    /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
-    pub worker: Signer<'info>,
+    pub worker: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -354,7 +358,7 @@ pub struct WorkerWithdraw<'info> {
 
     #[account(
         init_if_needed,
-        payer = worker,
+        payer = admin,
         associated_token::mint = deanno_token_mint,
         associated_token::authority = worker
     )]
@@ -362,7 +366,7 @@ pub struct WorkerWithdraw<'info> {
 
     #[account(
         init_if_needed,
-        payer = worker,
+        payer = admin,
         associated_token::mint = usdc_mint,
         associated_token::authority = worker
     )]
@@ -371,18 +375,18 @@ pub struct WorkerWithdraw<'info> {
     //合约本身的token账户
     #[account(
         init_if_needed,
-        payer = worker,
+        payer = admin,
         associated_token::mint = deanno_token_mint,
-        associated_token::authority = init_data
+        associated_token::authority = admin
     )]
     pub deanno_token_account: Account<'info, TokenAccount>,
 
     //合约本身的usdc账户
     #[account(
         init_if_needed,
-        payer = worker,
+        payer = admin,
         associated_token::mint = usdc_mint,
-        associated_token::authority = init_data
+        associated_token::authority = admin
     )]
     pub deanno_usdc_account: Account<'info, TokenAccount>,
 
@@ -395,8 +399,7 @@ pub struct WorkerWithdraw<'info> {
 
     #[account(
         mut,
-        seeds = [b"usdc"],//TODO
-        bump,
+        mint::decimals = 6,
     )]
     pub usdc_mint: Account<'info, Mint>,
 

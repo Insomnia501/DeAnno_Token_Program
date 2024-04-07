@@ -7,7 +7,7 @@ import { amount, Metaplex } from "@metaplex-foundation/js"
 import { PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID } from "@metaplex-foundation/mpl-token-metadata"
 import * as fs from 'fs';
 
-describe("de-anno-token-program", async () => {
+describe("de-anno-token-program", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env())
 
@@ -28,7 +28,7 @@ describe("de-anno-token-program", async () => {
   connection.requestAirdrop(worker.publicKey, 2*anchor.web3.LAMPORTS_PER_SOL)
   connection.requestAirdrop(demander.publicKey, 2*anchor.web3.LAMPORTS_PER_SOL)
 
-
+  console.log("worker address:", worker.publicKey.toBase58())
   // PDA for the token mint——给合约创建了一个tokenMintsPDA，solana上合约程序和存储分离，可以理解为这是token program的存储账户
   const [deannoTokenMintPDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("deanno")],
@@ -40,12 +40,15 @@ describe("de-anno-token-program", async () => {
     [Buffer.from("init")],
     program.programId
   )
+  console.log("deannoDataPDA:", deannoDataPDA)
+
 
   // PDA for the data account——给worker创建一个PDA，用来存用户自己的数据
   const [workerPDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("worker"), worker.publicKey.toBuffer()],
     program.programId
   )
+  
 
   // PDA for the data account——给demander创建一个PDA，用来存用户自己的数据
   const [demanderPDA] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -54,49 +57,12 @@ describe("de-anno-token-program", async () => {
   )
 
   // worker associated token account address——给worker创建一个ATA，用来存deannoToken
-  const workerTokenAccount = await spl.createAssociatedTokenAccount(
-    connection,
-    admin,
+  const workerTokenAccount = spl.getAssociatedTokenAddressSync(
     deannoTokenMintPDA,
     worker.publicKey
   )
 
-  // program associated token account address——给合约本身创建一个ATA，用来存deannoToken
-  const deannoTokenAccount = await spl.createAssociatedTokenAccount(
-    connection,
-    admin,
-    deannoTokenMintPDA,
-    deannoDataPDA
-  )
 
-  // 造一个测试用的币，当作usdc
-  console.log("start")
-  const usdcTokenMint = await spl.createMint(
-    connection,
-    admin,
-    admin.publicKey,
-    null,
-    6, // 小数位数，USDC 通常有6位小数
-  );
-  console.log(typeof usdcTokenMint)
-
-  // worker usdc associated token account address——worker的usdc ATA
-  const workerUSDCAccount = await spl.createAssociatedTokenAccount(
-    connection,
-    admin,
-    usdcTokenMint,
-    worker.publicKey
-  )
-  console.log(typeof workerUSDCAccount)
-
-  // program usdc associated token account address——合约的usdc ATA
-  const deannoUSDCAccount = await spl.createAssociatedTokenAccount(
-    connection,
-    admin,
-    usdcTokenMint,
-    deannoDataPDA,
-  )
-  console.log(typeof deannoUSDCAccount)
 
   // token metadata
   const metadata = {
@@ -205,7 +171,42 @@ describe("de-anno-token-program", async () => {
   })
 
   it("worker withdraw", async () => {
+    // 造一个测试用的币，当作usdc
+    console.log("start")
+    const usdcTokenMint = await spl.createMint(
+      connection,
+      admin,
+      admin.publicKey,
+      null,
+      6, // 小数位数，USDC 通常有6位小数
+    );
 
+    // program associated token account address——给合约本身创建一个ATA，用来存deannoToken
+    // 这里账户的owner想设置成合约但是暂未实现，先设置成admin
+    const deannoTokenAccount = await spl.createAssociatedTokenAccount(
+      connection,
+      admin,
+      deannoTokenMintPDA,
+      admin.publicKey,
+
+    )
+
+    // worker usdc associated token account address——worker的usdc ATA
+    const workerUSDCAccount = await spl.createAssociatedTokenAccount(
+      connection,
+      admin,
+      usdcTokenMint,
+      worker.publicKey
+    )
+
+    // program usdc associated token account address——合约的usdc ATA
+    const deannoUSDCAccount = await spl.createAssociatedTokenAccount(
+      connection,
+      admin,
+      usdcTokenMint,
+      admin.publicKey,
+    )
+    
     // 初始化一些usdc给deannoUSDCAccount
     const tx_sign = await spl.mintTo(
       connection,
@@ -213,18 +214,33 @@ describe("de-anno-token-program", async () => {
       usdcTokenMint,
       deannoUSDCAccount,
       admin,
-      100 * 10 ** 6, // 铸造的数量，这里是100个代币，记得乘以10的6次方因为小数位数是6
+      100 * 10 ** 6,
     );
     console.log(
       `Mint Token Transaction: https://explorer.solana.com/tx/${tx_sign}?cluster=devnet`
     )
-
+    
     assert.strictEqual(
       Number(
         (await connection.getTokenAccountBalance(deannoUSDCAccount)).value
           .amount
       ),
       100_000_000
+    )
+
+    const workerData = await program.account.workerData.fetch(workerPDA)
+    assert.strictEqual(
+      Number(
+        workerData.withdrawLimit
+      ),
+      125
+    )
+    const initData = await program.account.initData.fetch(deannoDataPDA)
+    assert.strictEqual(
+      Number(
+        initData.tokenPrice
+      ),
+      1
     )
 
     const amount = new anchor.BN(50)
@@ -241,7 +257,7 @@ describe("de-anno-token-program", async () => {
         deannoTokenMint: deannoTokenMintPDA,
         usdcMint: usdcTokenMint
       })
-      .signers([worker])
+      .signers([admin])
       .rpc()
     console.log("Your transaction signature", tx)
 
@@ -259,6 +275,13 @@ describe("de-anno-token-program", async () => {
           .amount
       ),
       0
+    )
+    assert.strictEqual(
+      Number(
+        (await connection.getTokenAccountBalance(deannoUSDCAccount)).value
+          .amount
+      ),
+      50_000_000
     )
   })
   
