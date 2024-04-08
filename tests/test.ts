@@ -173,7 +173,7 @@ describe("de-anno-token-program", () => {
     );
 
     // program associated token account address
-    // 这里账户的owner想设置成合约但是暂未实现，先设置成admin
+    // the owner is our program but use admin as owner
     const deannoTokenAccount = await spl.createAssociatedTokenAccount(
       connection,
       admin,
