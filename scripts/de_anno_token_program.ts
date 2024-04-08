@@ -283,9 +283,14 @@ export type DeAnnoTokenProgram = {
       "name": "workerWithdraw",
       "accounts": [
         {
-          "name": "worker",
+          "name": "admin",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "worker",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "workerData",
@@ -357,16 +362,7 @@ export type DeAnnoTokenProgram = {
         {
           "name": "usdcMint",
           "isMut": true,
-          "isSigner": false,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "type": "string",
-                "value": "usdc"
-              }
-            ]
-          }
+          "isSigner": false
         },
         {
           "name": "tokenProgram",
@@ -733,9 +729,14 @@ export const IDL: DeAnnoTokenProgram = {
       "name": "workerWithdraw",
       "accounts": [
         {
-          "name": "worker",
+          "name": "admin",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "worker",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "workerData",
@@ -807,16 +808,7 @@ export const IDL: DeAnnoTokenProgram = {
         {
           "name": "usdcMint",
           "isMut": true,
-          "isSigner": false,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "type": "string",
-                "value": "usdc"
-              }
-            ]
-          }
+          "isSigner": false
         },
         {
           "name": "tokenProgram",
