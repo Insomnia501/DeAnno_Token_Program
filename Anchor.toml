@@ -15,7 +15,7 @@ de_anno_token_program = "2ckWV1BszPt6hwfjyLP4FMSrR4zxbYhkXbnJcDWpq4Q7"
 url = "https://api.apr.dev"
 
 [provider]
-wallet = "~/Code/07_Solana/.Solana_wallet/test_wallet_1.json"
+wallet = ""
 cluster = "Localnet"
 
 [scripts]

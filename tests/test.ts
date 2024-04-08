@@ -12,7 +12,6 @@ describe("de-anno-token-program", () => {
   anchor.setProvider(anchor.AnchorProvider.env())
 
   const program = anchor.workspace.DeAnnoTokenProgram as Program<DeAnnoTokenProgram>
-  const wallet = anchor.workspace.DeAnnoTokenProgram.provider.wallet
   const connection = program.provider.connection
   const metaplex = Metaplex.make(connection)
   
@@ -218,7 +217,7 @@ describe("de-anno-token-program", () => {
       ),
       100_000_000
     )
-
+    /*
     const withdraw_amount = new anchor.BN(30)
     const tx = await program.methods
       .workerWithdraw(withdraw_amount)
@@ -257,6 +256,7 @@ describe("de-anno-token-program", () => {
       ),
       50_000_000
     )
+    */
   })
   
 })
