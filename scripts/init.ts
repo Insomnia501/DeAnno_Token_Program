@@ -22,7 +22,6 @@ async function main() {
     )
     console.log("deannoTokenMint address:", deannoTokenMintPDA)
 
-    // PDA for the deanno data account——给合约创建一个PDA，用来存初始化的数据
     const [deannoDataPDA] = anchor.web3.PublicKey.findProgramAddressSync(
         [Buffer.from("init")],
         program.programId

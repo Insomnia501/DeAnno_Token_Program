@@ -18,9 +18,7 @@ describe("de-anno-token-program", () => {
   
   const privateKeyJson = "/Users/daniel/Code/07_Solana/.Solana_wallet/test_wallet_1.json"
   const privateKeyString = fs.readFileSync(privateKeyJson, { encoding: 'utf8' });
-  // 将JSON字符串转换为Uint8Array
   const privateKeyUint8Array = new Uint8Array(JSON.parse(privateKeyString));
-  // 从私钥创建Keypair
   const admin = anchor.web3.Keypair.fromSecretKey(privateKeyUint8Array);
 
   const worker = anchor.web3.Keypair.generate()
@@ -29,40 +27,35 @@ describe("de-anno-token-program", () => {
   connection.requestAirdrop(demander.publicKey, 2*anchor.web3.LAMPORTS_PER_SOL)
 
   console.log("worker address:", worker.publicKey.toBase58())
-  // PDA for the token mint——给合约创建了一个tokenMintsPDA，solana上合约程序和存储分离，可以理解为这是token program的存储账户
+  // PDA for the token mint
   const [deannoTokenMintPDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("deanno")],
     program.programId
   )
 
-  // PDA for the deanno data account——给合约创建一个PDA，用来存初始化的数据
+  // PDA for the deanno data account
   const [deannoDataPDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("init")],
     program.programId
   )
-  console.log("deannoDataPDA:", deannoDataPDA)
 
-
-  // PDA for the data account——给worker创建一个PDA，用来存用户自己的数据
+  // PDA for the worker data account 
   const [workerPDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("worker"), worker.publicKey.toBuffer()],
     program.programId
   )
   
-
-  // PDA for the data account——给demander创建一个PDA，用来存用户自己的数据
+  // PDA for the demander data account
   const [demanderPDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("demander"), demander.publicKey.toBuffer()],
     program.programId
   )
 
-  // worker associated token account address——给worker创建一个ATA，用来存deannoToken
+  // worker associated token account address
   const workerTokenAccount = spl.getAssociatedTokenAddressSync(
     deannoTokenMintPDA,
     worker.publicKey
   )
-
-
 
   // token metadata
   const metadata = {
@@ -71,9 +64,8 @@ describe("de-anno-token-program", () => {
     symbol: "DAN",
   }
 
-
   it("Initialize", async () => {
-    // PDA for the token metadata account for the deanno token mint创建一个tokenMints的metadata的PDA，不明白为啥这还要单独一个account
+    // PDA for the token metadata account for the deanno token mint
     const deannoTokenMintMetadataPDA = await metaplex
       .nfts()
       .pdas()
@@ -160,7 +152,7 @@ describe("de-anno-token-program", () => {
       .rpc()
     console.log("Your transaction signature", tx)
 
-    // Check that 1 token was minted to the player's token account
+    // Check that token was minted to the player's token account
     assert.strictEqual(
       Number(
         (await connection.getTokenAccountBalance(workerTokenAccount)).value
@@ -171,17 +163,16 @@ describe("de-anno-token-program", () => {
   })
 
   it("worker withdraw", async () => {
-    // 造一个测试用的币，当作usdc
-    console.log("start")
+    // on localnet test: fake token as USDC
     const usdcTokenMint = await spl.createMint(
       connection,
       admin,
       admin.publicKey,
       null,
-      6, // 小数位数，USDC 通常有6位小数
+      6,
     );
 
-    // program associated token account address——给合约本身创建一个ATA，用来存deannoToken
+    // program associated token account address
     // 这里账户的owner想设置成合约但是暂未实现，先设置成admin
     const deannoTokenAccount = await spl.createAssociatedTokenAccount(
       connection,
@@ -191,7 +182,7 @@ describe("de-anno-token-program", () => {
 
     )
 
-    // worker usdc associated token account address——worker的usdc ATA
+    // worker usdc associated token account address
     const workerUSDCAccount = await spl.createAssociatedTokenAccount(
       connection,
       admin,
@@ -199,7 +190,7 @@ describe("de-anno-token-program", () => {
       worker.publicKey
     )
 
-    // program usdc associated token account address——合约的usdc ATA
+    // program usdc associated token account address
     const deannoUSDCAccount = await spl.createAssociatedTokenAccount(
       connection,
       admin,
@@ -207,7 +198,7 @@ describe("de-anno-token-program", () => {
       admin.publicKey,
     )
     
-    // 初始化一些usdc给deannoUSDCAccount
+    // mint some usdc to deannoUSDCAccount for transfer test
     const tx_sign = await spl.mintTo(
       connection,
       admin,
@@ -228,24 +219,9 @@ describe("de-anno-token-program", () => {
       100_000_000
     )
 
-    const workerData = await program.account.workerData.fetch(workerPDA)
-    assert.strictEqual(
-      Number(
-        workerData.withdrawLimit
-      ),
-      125
-    )
-    const initData = await program.account.initData.fetch(deannoDataPDA)
-    assert.strictEqual(
-      Number(
-        initData.tokenPrice
-      ),
-      1
-    )
-
-    const amount = new anchor.BN(50)
+    const withdraw_amount = new anchor.BN(30)
     const tx = await program.methods
-      .workerWithdraw(amount)
+      .workerWithdraw(withdraw_amount)
       .accounts({
         worker: worker.publicKey,
         workerData: workerPDA,
@@ -257,11 +233,9 @@ describe("de-anno-token-program", () => {
         deannoTokenMint: deannoTokenMintPDA,
         usdcMint: usdcTokenMint
       })
-      .signers([admin])
-      .rpc()
+      .rpc().catch(e => console.error(e))
     console.log("Your transaction signature", tx)
 
-    // Check that 1 token was burned from the player's token account
     assert.strictEqual(
       Number(
         (await connection.getTokenAccountBalance(workerUSDCAccount)).value

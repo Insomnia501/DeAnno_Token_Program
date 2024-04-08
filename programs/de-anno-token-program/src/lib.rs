@@ -19,7 +19,6 @@ pub mod de_anno_token_program {
 
     use super::*;
 
-    // Create new token mint with metadata using PDA as mint authority
     pub fn initialize(
         ctx: Context<Initialize>,
         uri: String,
@@ -29,9 +28,9 @@ pub mod de_anno_token_program {
         withdraw_percent_init: u64
     ) -> Result<()> {
         /*
-            初始化：
-            1.生成一个tokenMints
-            2.初始化tokenPrice,withdraw_percent
+            initialize(only call once)
+            1.init a DeAnno token_mints with metadata
+            2.init token_price,withdraw_percent
          */
         // PDA seeds and bump to "sign" for CPI
         let seeds = b"deanno";
@@ -73,33 +72,34 @@ pub mod de_anno_token_program {
         )?;
 
         ctx.accounts.init_data.token_price = token_price_init; // USDC_amount * token_price = DAN_amount
-        ctx.accounts.init_data.withdraw_percent = withdraw_percent_init; //50%
+        ctx.accounts.init_data.withdraw_percent = withdraw_percent_init;
 
         Ok(())
     }
 
-    // Create new worker account
     pub fn init_worker(ctx: Context<InitWorker>, withdraw_limit:u64) -> Result<()> {
-        // Set initial worker withdraw limit
+        /*
+            Set initial worker withdraw limit
+            when worker first connect wallet
+        */
         ctx.accounts.worker_data.withdraw_limit = withdraw_limit;
         Ok(())
     }
 
-    // Create new demander account
     pub fn init_demander(ctx: Context<InitDemander>, balance:u64) -> Result<()> {
-        // Set initial demander balance
-        // for测试，先给100
+        /*
+            Set initial demander balance
+            when demander first connect wallet
+        */
         ctx.accounts.demander_data.balance = balance;
         Ok(())
     }
 
-    // dirtribute token to worker
     pub fn token_distribution(ctx: Context<TokenDistribution>, amount: u64) -> Result<()> {
         /*   
-          为worker工作完成后发放对应的token，amount单位为USDC
-          减少对应的DemanderBalance，mint对应的DAN并发给worker address
-          注意这里的worker address不是通过参数给的，而是通过ctx里面给的
-          更新worker withdraw limit
+            mint token for worker after their task was acceptance, amount:USDC
+            reduce demander balance，mint DAN to worker
+            update worker withdraw limit
         */
         if ctx.accounts.demander_data.balance < amount {
             return err!(MyError::NotEnoughBalance);
@@ -117,7 +117,7 @@ pub mod de_anno_token_program {
             ctx.accounts.token_program.to_account_info(),
             MintTo {
                 mint: ctx.accounts.deanno_token_mint.to_account_info(), // mint account of token to mint
-                to: ctx.accounts.worker_token_account.to_account_info(), // player token account to mint to
+                to: ctx.accounts.worker_token_account.to_account_info(), // worker token account to mint to
                 authority: ctx.accounts.deanno_token_mint.to_account_info(), // pda is used as both address of mint and mint authority
             },
             signer, // pda signer
@@ -135,16 +135,17 @@ pub mod de_anno_token_program {
         Ok(())
     }
 
-    // worker withdraw USDC by DAN
     pub fn worker_withdraw(ctx: Context<WorkerWithdraw>, amount: u64) -> Result<()> {
-        // worker提现:在withdraw limit内，转DAN给合约，合约转USDC给worker
-        // amount是DAN数量，withdraw_amount是usdc数量
-        
+        /*
+            worker withdraw their USDC by their DAN, within their withdrawal limit
+            amount(DAN)，withdraw_amount(USDC)
+        */
         let withdraw_amount = amount / ctx.accounts.init_data.token_price;
-        if ctx.accounts.worker_data.withdraw_limit < withdraw_amount { 
+        
+        if ctx.accounts.worker_data.withdraw_limit < withdraw_amount{
             return err!(MyError::OutOfWithdrawLimit);
         }
-
+            
         // Transfer DAN
         // PDA seeds and bump to "sign" for CPI
         let seeds = b"deanno";
@@ -156,7 +157,7 @@ pub mod de_anno_token_program {
             ctx.accounts.token_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.worker_token_account.to_account_info(), // mint account of token to mint
-                to: ctx.accounts.deanno_token_account.to_account_info(), // player token account to mint to
+                to: ctx.accounts.deanno_token_account.to_account_info(), // worker token account to mint to
                 authority: ctx.accounts.deanno_token_mint.to_account_info(), // pda is used as both address of mint and mint authority
             },
             signer, // pda signer
@@ -169,12 +170,13 @@ pub mod de_anno_token_program {
 
         transfer(cpi_ctx, transfer_token_amount)?;
 
+        // Transfer USDC
         // CPI Context
         let cpi_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.deanno_usdc_account.to_account_info(), // mint account of token to mint
-                to: ctx.accounts.worker_usdc_account.to_account_info(), // player token account to mint to
+                to: ctx.accounts.worker_usdc_account.to_account_info(), // worker token account to mint to
                 authority: ctx.accounts.admin.to_account_info(), // pda is used as both address of mint and mint authority
             }
         );
@@ -185,9 +187,7 @@ pub mod de_anno_token_program {
             .unwrap();
 
         transfer(cpi_ctx, transfer_usdc_amount)?;
-
         ctx.accounts.worker_data.withdraw_limit = ctx.accounts.worker_data.withdraw_limit.saturating_sub(withdraw_amount);
-
         Ok(())
     }
 }
@@ -356,6 +356,7 @@ pub struct WorkerWithdraw<'info> {
     )]
     pub init_data: Account<'info, InitData>,
 
+    // DAN ATA of worker
     #[account(
         init_if_needed,
         payer = admin,
@@ -364,6 +365,7 @@ pub struct WorkerWithdraw<'info> {
     )]
     pub worker_token_account: Account<'info, TokenAccount>,
 
+    // USDC ATA of worker
     #[account(
         init_if_needed,
         payer = admin,
@@ -372,7 +374,7 @@ pub struct WorkerWithdraw<'info> {
     )]
     pub worker_usdc_account: Account<'info, TokenAccount>,
 
-    //合约本身的token账户
+    // DAN ATA of admin
     #[account(
         init_if_needed,
         payer = admin,
@@ -381,7 +383,7 @@ pub struct WorkerWithdraw<'info> {
     )]
     pub deanno_token_account: Account<'info, TokenAccount>,
 
-    //合约本身的usdc账户
+    // USDC ATA of admin
     #[account(
         init_if_needed,
         payer = admin,
