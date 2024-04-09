@@ -33,7 +33,6 @@ anchor test --skip-local-validator
 // update config in Anchor.toml
 [provider]
 cluster = "Devnet"
-
 // deploy to devnet
 anchor deploy
 ```
